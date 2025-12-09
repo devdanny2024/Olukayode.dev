@@ -10,6 +10,8 @@ import {
 } from "@/data/profile";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 type Experience = {
   role: string;
@@ -136,6 +138,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    console.error("cv-pdf error", error);
     return NextResponse.json(
       { error: "Failed to create PDF", details: `${error}` },
       { status: 500 },
