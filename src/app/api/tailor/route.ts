@@ -13,7 +13,7 @@ type TailorRequest = {
   requirements?: string;
 };
 
-const modelId = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const modelId = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 const apiBase = process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com";
 const modelEndpoint = `${apiBase}/v1/models/${modelId}:generateContent`;
 
