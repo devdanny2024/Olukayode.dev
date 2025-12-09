@@ -13,8 +13,9 @@ type TailorRequest = {
   requirements?: string;
 };
 
-const modelEndpoint =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+const modelId = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const apiBase = process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com";
+const modelEndpoint = `${apiBase}/v1/models/${modelId}:generateContent`;
 
 const buildPrompt = (input: TailorRequest) => {
   const skills = skillGroups.map((g) => `${g.label}: ${g.items.join(", ")}`).join("\n");
