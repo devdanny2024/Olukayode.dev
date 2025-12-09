@@ -2458,6 +2458,13 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Prevent accidental horizontal overflow from wide effects or gradients */
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

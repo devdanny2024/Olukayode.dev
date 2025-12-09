@@ -9,6 +9,8 @@ import {
   projectShowcase,
 } from "@/data/profile";
 
+export const runtime = "nodejs";
+
 type Experience = {
   role: string;
   company: string;

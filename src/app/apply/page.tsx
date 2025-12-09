@@ -97,6 +97,16 @@ export default function ApplyPage() {
     return dedupe(selected).slice(0, 10);
   }, [flatSkills, keywords]);
 
+  const heuristicExperiences = useMemo(() => {
+    return experienceHistory.map((exp) => {
+      const keywordBullets = exp.bullets.filter((b) =>
+        keywords.some((kw) => b.toLowerCase().includes(kw) || (exp.focus || []).includes(kw)),
+      );
+      const bullets = keywordBullets.length ? keywordBullets : exp.bullets;
+      return { ...exp, bullets: bullets.slice(0, 3) };
+    });
+  }, [keywords]);
+
   const pickRelevant = <T,>(
     items: T[],
     extractText: (item: T) => string[],
@@ -109,16 +119,6 @@ export default function ApplyPage() {
     );
     return (filtered.length ? filtered : items).slice(0, fallback);
   };
-
-  const heuristicExperiences = useMemo(
-    () =>
-      pickRelevant(
-        experienceHistory,
-        (exp) => [...exp.bullets, exp.role, exp.company, ...(exp.focus || [])],
-        3
-      ),
-    [keywords]
-  );
 
   const heuristicProjects = useMemo(
     () =>
@@ -174,9 +174,21 @@ export default function ApplyPage() {
   const [aiColdEmail, setAiColdEmail] = useState<string | null>(null);
   const [aiOfferLetter, setAiOfferLetter] = useState<string | null>(null);
 
+  const mergeExperiences = useMemo(() => {
+    if (!aiExperiences) return heuristicExperiences;
+    return experienceHistory.map((exp) => {
+      const aiMatch = aiExperiences.find(
+        (ai) =>
+          ai.company.toLowerCase() === exp.company.toLowerCase() &&
+          ai.role.toLowerCase() === exp.role.toLowerCase(),
+      );
+      return aiMatch ? { ...exp, ...aiMatch, bullets: aiMatch.bullets ?? exp.bullets } : exp;
+    });
+  }, [aiExperiences, heuristicExperiences]);
+
   const summaryToUse = aiSummary ?? heuristicSummary;
   const skillsToUse = aiSkills ?? heuristicSkills;
-  const experiencesToUse = aiExperiences ?? heuristicExperiences;
+  const experiencesToUse = mergeExperiences;
   const projectsToUse = aiProjects ?? heuristicProjects;
   const coverLetterToUse = aiCoverLetter ?? heuristicCoverLetter;
   const coldEmailToUse = aiColdEmail ?? heuristicCoverLetter.replace("Dear", "Hi").split("\n\n").slice(0, 3).join("\n\n");
