@@ -74,7 +74,6 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          responseMimeType: "application/json",
           temperature: 0.6,
         },
         safetySettings: [
@@ -95,7 +94,9 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text =
+      data?.candidates?.[0]?.content?.parts?.find((p: { text?: string }) => p.text)?.text;
+
     if (!text) {
       return NextResponse.json(
         { error: "Gemini returned an unexpected response" },
