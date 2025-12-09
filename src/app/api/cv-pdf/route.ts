@@ -8,6 +8,7 @@ import {
   experienceHistory,
   projectShowcase,
 } from "@/data/profile";
+import path from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +47,19 @@ const toBuffer = (doc: PDFDocInstance) =>
 
 export async function POST(request: Request) {
   try {
+    // Ensure pdfkit can locate bundled AFM font files in serverless environments
+    if (!process.env.PDFKIT_DATA_DIR) {
+      try {
+        // use dynamic require to avoid webpack bundling afm files
+        // eslint-disable-next-line @typescript-eslint/no-implied-eval
+        const dynamicResolve = eval("require").resolve as NodeJS.Require["resolve"];
+        const helveticaPath = dynamicResolve("pdfkit/js/data/Helvetica.afm");
+        process.env.PDFKIT_DATA_DIR = path.dirname(helveticaPath);
+      } catch {
+        // ignore, pdfkit will fall back to defaults
+      }
+    }
+
     const body = (await request.json()) as Payload;
 
     const mergedContact = {
