@@ -50,7 +50,9 @@ Return a strict JSON object with keys:
   "skills": string[] (up to 10 highly relevant skills),
   "experiences": { "role": string, "company": string, "timeline": string, "bullets": string[] }[] (top 3 relevant),
   "projects": { "name": string, "impact": string, "stack": string }[] (top 2),
-  "coverLetter": string (3-5 short paragraphs separated by blank lines)
+  "coverLetter": string (3-5 short paragraphs separated by blank lines),
+  "coldEmail": string (short outreach email, 3-6 sentences, include role/company),
+  "offerLetter": string (concise one-page offer-style note highlighting value and fit)
 }
 No prose, only JSON.`;
 };
@@ -105,7 +107,14 @@ export async function POST(request: Request) {
     }
 
     try {
-      const parsed = JSON.parse(text);
+      const cleaned = text
+        .replace(/```json/g, "```")
+        .replace(/```/g, "")
+        .trim();
+      const firstBrace = cleaned.indexOf("{");
+      const lastBrace = cleaned.lastIndexOf("}");
+      const slice = firstBrace >= 0 && lastBrace > firstBrace ? cleaned.slice(firstBrace, lastBrace + 1) : cleaned;
+      const parsed = JSON.parse(slice);
       return NextResponse.json(parsed);
     } catch (error) {
       return NextResponse.json(

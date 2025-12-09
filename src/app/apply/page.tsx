@@ -67,6 +67,8 @@ type TailorResponse = {
     stack: string;
   }[];
   coverLetter: string;
+  coldEmail: string;
+  offerLetter: string;
 };
 
 export default function ApplyPage() {
@@ -77,6 +79,8 @@ export default function ApplyPage() {
   const [copyMessage, setCopyMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   const keywords = useMemo(() => extractKeywords(requirements), [requirements]);
 
@@ -167,12 +171,25 @@ export default function ApplyPage() {
   const [aiExperiences, setAiExperiences] = useState<TailorResponse["experiences"] | null>(null);
   const [aiProjects, setAiProjects] = useState<TailorResponse["projects"] | null>(null);
   const [aiCoverLetter, setAiCoverLetter] = useState<string | null>(null);
+  const [aiColdEmail, setAiColdEmail] = useState<string | null>(null);
+  const [aiOfferLetter, setAiOfferLetter] = useState<string | null>(null);
 
   const summaryToUse = aiSummary ?? heuristicSummary;
   const skillsToUse = aiSkills ?? heuristicSkills;
   const experiencesToUse = aiExperiences ?? heuristicExperiences;
   const projectsToUse = aiProjects ?? heuristicProjects;
   const coverLetterToUse = aiCoverLetter ?? heuristicCoverLetter;
+  const coldEmailToUse = aiColdEmail ?? heuristicCoverLetter.replace("Dear", "Hi").split("\n\n").slice(0, 3).join("\n\n");
+  const offerLetterToUse =
+    aiOfferLetter ??
+    [
+      `To the ${company ? `${company} team` : "hiring team"},`,
+      `I am excited to contribute as ${role || "this role"}. Below is a concise offer of value tailored to your needs.`,
+      `Key strengths: ${skillsToUse.slice(0, 5).join(", ")}.`,
+      `Recent impact: ${(experiencesToUse[0]?.bullets ?? []).slice(0, 1).join(" ")}`,
+      `Let me know the best next step to move this forward.`,
+      `${contactInfo.name}`,
+    ].join("\n\n");
 
   const mailtoHref = useMemo(() => {
     const subject = encodeURIComponent(
@@ -220,6 +237,8 @@ export default function ApplyPage() {
       setAiExperiences(data.experiences);
       setAiProjects(data.projects);
       setAiCoverLetter(data.coverLetter);
+      setAiColdEmail(data.coldEmail);
+      setAiOfferLetter(data.offerLetter);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
@@ -229,6 +248,43 @@ export default function ApplyPage() {
       if (preview) {
         preview.scrollIntoView({ behavior: "smooth" });
       }
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true);
+    setDownloadError("");
+    try {
+      const resp = await fetch("/api/cv-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contact: contactInfo,
+          role,
+          company,
+          summary: summaryToUse,
+          skills: skillsToUse,
+          experiences: experiencesToUse,
+          projects: projectsToUse,
+        }),
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to generate PDF");
+      }
+
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "tailored-cv.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -424,6 +480,14 @@ export default function ApplyPage() {
                   <Clipboard className="h-4 w-4 mr-2" />
                   Copy CV snapshot
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDownloadPdf}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? "Building PDF..." : "Download PDF"}
+                </Button>
                 <Button asChild variant="secondary">
                   <a href={mailtoHref}>
                     <Send className="h-4 w-4 mr-2" />
@@ -431,6 +495,9 @@ export default function ApplyPage() {
                   </a>
                 </Button>
               </div>
+              {downloadError && (
+                <p className="text-sm text-destructive">{downloadError}</p>
+              )}
             </div>
 
             <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
@@ -450,6 +517,46 @@ export default function ApplyPage() {
               </div>
               <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
                 {coverLetterToUse}
+              </pre>
+            </div>
+
+            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Cold outreach email</p>
+                  <h3 className="text-xl font-semibold">Short intro you can paste</h3>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCopy("Cold email", coldEmailToUse)}
+                >
+                  <Clipboard className="h-4 w-4 mr-2" />
+                  Copy cold email
+                </Button>
+              </div>
+              <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
+                {coldEmailToUse}
+              </pre>
+            </div>
+
+            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Offer-style note</p>
+                  <h3 className="text-xl font-semibold">Concise offer of value</h3>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleCopy("Offer letter", offerLetterToUse)}
+                >
+                  <Clipboard className="h-4 w-4 mr-2" />
+                  Copy offer letter
+                </Button>
+              </div>
+              <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
+                {offerLetterToUse}
               </pre>
             </div>
           </motion.div>
