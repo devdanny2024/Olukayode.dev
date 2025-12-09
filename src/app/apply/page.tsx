@@ -210,7 +210,8 @@ export default function ApplyPage() {
 
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to generate with Gemini");
+        const detail = data?.details ? `: ${data.details}` : "";
+        throw new Error(data?.error ? `${data.error}${detail}` : "Failed to generate with Gemini");
       }
 
       const data = (await resp.json()) as TailorResponse;
