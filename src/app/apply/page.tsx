@@ -52,12 +52,31 @@ const extractKeywords = (text: string) => {
 
 const dedupe = <T,>(items: T[]) => Array.from(new Set(items));
 
+type TailorResponse = {
+  summary: string[];
+  skills: string[];
+  experiences: {
+    role: string;
+    company: string;
+    timeline: string;
+    bullets: string[];
+  }[];
+  projects: {
+    name: string;
+    impact: string;
+    stack: string;
+  }[];
+  coverLetter: string;
+};
+
 export default function ApplyPage() {
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [requirements, setRequirements] = useState(defaultRequirement);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const keywords = useMemo(() => extractKeywords(requirements), [requirements]);
 
@@ -66,7 +85,7 @@ export default function ApplyPage() {
     []
   );
 
-  const keySkills = useMemo(() => {
+  const heuristicSkills = useMemo(() => {
     const matches = flatSkills.filter((skill) =>
       keywords.some((kw) => skill.toLowerCase().includes(kw))
     );
@@ -87,7 +106,7 @@ export default function ApplyPage() {
     return (filtered.length ? filtered : items).slice(0, fallback);
   };
 
-  const selectedExperiences = useMemo(
+  const heuristicExperiences = useMemo(
     () =>
       pickRelevant(
         experienceHistory,
@@ -97,7 +116,7 @@ export default function ApplyPage() {
     [keywords]
   );
 
-  const selectedProjects = useMemo(
+  const heuristicProjects = useMemo(
     () =>
       pickRelevant(
         projectShowcase,
@@ -107,7 +126,7 @@ export default function ApplyPage() {
     [keywords]
   );
 
-  const tailoredSummary = useMemo(() => {
+  const heuristicSummary = useMemo(() => {
     const roleLine = role
       ? `Targeting ${role}${company ? ` at ${company}` : ""}.`
       : differentiators[0];
@@ -118,12 +137,12 @@ export default function ApplyPage() {
     return [summaryPoints[0], roleLine, keywordLine];
   }, [company, differentiators, keywords, role, summaryPoints]);
 
-  const coverLetter = useMemo(() => {
-    const topExperience = selectedExperiences[0];
+  const heuristicCoverLetter = useMemo(() => {
+    const topExperience = heuristicExperiences[0];
     const addressedCompany = company ? `${company} team` : "Hiring Manager";
     const roleName = role || "the role";
     const problemLine = requirements
-      ? `Your description highlights ${keywords.slice(0, 5).join(", ") || "product and delivery"}; I can help by pairing ${keySkills
+      ? `Your description highlights ${keywords.slice(0, 5).join(", ") || "product and delivery"}; I can help by pairing ${heuristicSkills
           .slice(0, 4)
           .join(", ")} with disciplined delivery.`
       : "I prioritize pairing clear outcomes with reliable engineering.";
@@ -141,19 +160,31 @@ export default function ApplyPage() {
       `${contactInfo.name}`,
       `${contactInfo.email} | ${contactInfo.phone}`,
     ].join("\n\n");
-  }, [company, contactInfo.email, contactInfo.name, contactInfo.phone, keySkills, keywords, requirements, role, selectedExperiences]);
+  }, [company, contactInfo.email, contactInfo.name, contactInfo.phone, heuristicExperiences, heuristicSkills, keywords, requirements, role]);
+
+  const [aiSummary, setAiSummary] = useState<string[] | null>(null);
+  const [aiSkills, setAiSkills] = useState<string[] | null>(null);
+  const [aiExperiences, setAiExperiences] = useState<TailorResponse["experiences"] | null>(null);
+  const [aiProjects, setAiProjects] = useState<TailorResponse["projects"] | null>(null);
+  const [aiCoverLetter, setAiCoverLetter] = useState<string | null>(null);
+
+  const summaryToUse = aiSummary ?? heuristicSummary;
+  const skillsToUse = aiSkills ?? heuristicSkills;
+  const experiencesToUse = aiExperiences ?? heuristicExperiences;
+  const projectsToUse = aiProjects ?? heuristicProjects;
+  const coverLetterToUse = aiCoverLetter ?? heuristicCoverLetter;
 
   const mailtoHref = useMemo(() => {
     const subject = encodeURIComponent(
       `Application for ${role || "the role"}${company ? ` at ${company}` : ""}`
     );
-    const experienceLine = selectedExperiences
+    const experienceLine = experiencesToUse
       .map((exp) => `${exp.role} @ ${exp.company}`)
       .join(" | ");
-    const highlights = `Top skills: ${keySkills.slice(0, 6).join(", ")}\nExperience: ${experienceLine}`;
-    const body = encodeURIComponent(`${coverLetter}\n\n---\nCV Snapshot\n${highlights}`);
+    const highlights = `Top skills: ${skillsToUse.slice(0, 6).join(", ")}\nExperience: ${experienceLine}`;
+    const body = encodeURIComponent(`${coverLetterToUse}\n\n---\nCV Snapshot\n${highlights}`);
     return `mailto:?subject=${subject}&body=${body}`;
-  }, [company, coverLetter, keySkills, role, selectedExperiences]);
+  }, [company, coverLetterToUse, experiencesToUse, role, skillsToUse]);
 
   const handleCopy = async (label: string, content: string) => {
     try {
@@ -166,12 +197,37 @@ export default function ApplyPage() {
     }
   };
 
-  const onSubmit = (event: React.FormEvent) => {
+  const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setHasGenerated(true);
-    const preview = document.getElementById("tailored-preview");
-    if (preview) {
-      preview.scrollIntoView({ behavior: "smooth" });
+    setIsLoading(true);
+    setError("");
+    try {
+      const resp = await fetch("/api/tailor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, company, requirements }),
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data?.error || "Failed to generate with Gemini");
+      }
+
+      const data = (await resp.json()) as TailorResponse;
+      setAiSummary(data.summary);
+      setAiSkills(data.skills);
+      setAiExperiences(data.experiences);
+      setAiProjects(data.projects);
+      setAiCoverLetter(data.coverLetter);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error");
+    } finally {
+      setHasGenerated(true);
+      setIsLoading(false);
+      const preview = document.getElementById("tailored-preview");
+      if (preview) {
+        preview.scrollIntoView({ behavior: "smooth" });
+      }
     }
   };
 
@@ -221,11 +277,11 @@ export default function ApplyPage() {
             animate={{ opacity: 1, y: 0 }}
             className="glass rounded-2xl p-6 border border-border/50 space-y-6"
           >
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                Start with the job requirements, role, and company name. The preview updates as soon as you click tailor.
-              </p>
-            </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  Start with the job requirements, role, and company name. The preview updates as soon as you click tailor.
+                </p>
+              </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -259,19 +315,24 @@ export default function ApplyPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <FileText className="h-4 w-4" />
-                <span>{keywords.length ? `${keywords.length} keywords detected` : "Add requirements to extract keywords"}</span>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  <span>{keywords.length ? `${keywords.length} keywords detected` : "Add requirements to extract keywords"}</span>
+                </div>
+                <Button
+                  type="submit"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Generating..." : "Tailor CV & Cover Letter"}
+                </Button>
               </div>
-              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Tailor CV & Cover Letter
-              </Button>
-            </div>
-            {copyMessage && (
-              <div className="text-sm text-primary">{copyMessage}</div>
-            )}
-          </motion.form>
+              {error && <div className="text-sm text-destructive">{error}</div>}
+              {copyMessage && (
+                <div className="text-sm text-primary">{copyMessage}</div>
+              )}
+            </motion.form>
 
           <motion.div
             id="tailored-preview"
@@ -295,7 +356,7 @@ export default function ApplyPage() {
               </div>
 
               <div className="space-y-2">
-                {tailoredSummary.map((line) => (
+                {summaryToUse.map((line) => (
                   <p key={line} className="text-sm text-muted-foreground leading-relaxed">
                     {line}
                   </p>
@@ -307,7 +368,7 @@ export default function ApplyPage() {
               <div className="space-y-2">
                 <p className="text-sm font-semibold">Relevant skills</p>
                 <div className="flex flex-wrap gap-2">
-                  {keySkills.map((skill) => (
+                  {skillsToUse.map((skill) => (
                     <Badge key={skill} variant="outline">
                       {skill}
                     </Badge>
@@ -319,7 +380,7 @@ export default function ApplyPage() {
 
               <div className="space-y-3">
                 <p className="text-sm font-semibold">Experience focus</p>
-                {selectedExperiences.map((exp) => (
+                {experiencesToUse.map((exp) => (
                   <div key={`${exp.company}-${exp.role}`} className="p-3 rounded-xl border border-border/40 bg-muted/30">
                     <div className="flex items-center justify-between gap-3">
                       <div>
@@ -343,7 +404,7 @@ export default function ApplyPage() {
               <div className="space-y-2">
                 <p className="text-sm font-semibold">Projects to spotlight</p>
                 <div className="grid gap-2">
-                  {selectedProjects.map((proj) => (
+                  {projectsToUse.map((proj) => (
                     <div key={proj.name} className="p-3 rounded-xl border border-border/40 bg-muted/20">
                       <p className="font-semibold text-sm">{proj.name}</p>
                       <p className="text-xs text-muted-foreground">{proj.impact}</p>
@@ -357,7 +418,7 @@ export default function ApplyPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleCopy("CV snapshot", tailoredSummary.concat(keySkills).join("\n"))}
+                  onClick={() => handleCopy("CV snapshot", summaryToUse.concat(skillsToUse).join("\n"))}
                 >
                   <Clipboard className="h-4 w-4 mr-2" />
                   Copy CV snapshot
@@ -380,14 +441,14 @@ export default function ApplyPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleCopy("Cover letter", coverLetter)}
+                  onClick={() => handleCopy("Cover letter", coverLetterToUse)}
                 >
                   <Clipboard className="h-4 w-4 mr-2" />
                   Copy letter
                 </Button>
               </div>
               <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
-                {coverLetter}
+                {coverLetterToUse}
               </pre>
             </div>
           </motion.div>
