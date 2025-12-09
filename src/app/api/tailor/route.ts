@@ -71,11 +71,17 @@ export async function POST(request: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
           responseMimeType: "application/json",
           temperature: 0.6,
         },
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+        ],
       }),
     });
 
@@ -96,8 +102,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const parsed = JSON.parse(text);
-    return NextResponse.json(parsed);
+    try {
+      const parsed = JSON.parse(text);
+      return NextResponse.json(parsed);
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Gemini returned non-JSON response", details: text },
+        { status: 502 },
+      );
+    }
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to generate tailored content", details: `${error}` },
