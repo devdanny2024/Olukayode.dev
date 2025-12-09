@@ -307,11 +307,11 @@ export default function ApplyPage() {
         <div className="absolute right-0 bottom-10 w-96 h-96 rounded-full blur-3xl" style={{ background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)" }} />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-12 space-y-10 relative z-10 w-full">
+      <div className="max-w-6xl mx-auto px-4 py-12 space-y-10 relative z-10 w-full overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-3xl p-8 border border-border/50"
+          className="glass rounded-3xl p-8 border border-border/50 max-w-full"
         >
           <div className="flex items-start justify-between gap-6 flex-col md:flex-row">
             <div className="space-y-3">
@@ -344,7 +344,7 @@ export default function ApplyPage() {
             onSubmit={onSubmit}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-2xl p-6 border border-border/50 space-y-6"
+            className="glass rounded-2xl p-6 border border-border/50 space-y-6 max-w-full"
           >
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">
@@ -407,9 +407,9 @@ export default function ApplyPage() {
             id="tailored-preview"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+            className="space-y-6 max-w-full"
           >
-            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
+            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4 max-w-full">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">
@@ -512,7 +512,7 @@ export default function ApplyPage() {
               )}
             </div>
 
-            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
+            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4 max-w-full">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Cover letter draft</p>
@@ -527,12 +527,12 @@ export default function ApplyPage() {
                   Copy letter
                 </Button>
               </div>
-              <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
+              <pre className="text-sm whitespace-pre-wrap break-words leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
                 {coverLetterToUse}
               </pre>
             </div>
 
-            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
+            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4 max-w-full">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Cold outreach email</p>
@@ -547,12 +547,12 @@ export default function ApplyPage() {
                   Copy cold email
                 </Button>
               </div>
-              <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
+              <pre className="text-sm whitespace-pre-wrap break-words leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
                 {coldEmailToUse}
               </pre>
             </div>
 
-            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4">
+            <div className="glass rounded-2xl p-6 border border-border/50 space-y-4 max-w-full">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Offer-style note</p>
@@ -567,7 +567,7 @@ export default function ApplyPage() {
                   Copy offer letter
                 </Button>
               </div>
-              <pre className="text-sm whitespace-pre-wrap leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
+              <pre className="text-sm whitespace-pre-wrap break-words leading-relaxed text-muted-foreground font-sans bg-muted/30 p-4 rounded-xl border border-border/40">
                 {offerLetterToUse}
               </pre>
             </div>
