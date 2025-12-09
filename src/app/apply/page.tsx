@@ -301,13 +301,13 @@ export default function ApplyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden w-full">
+    <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden w-full isolate">
       <div className="absolute inset-0 overflow-hidden opacity-40 pointer-events-none">
         <div className="absolute -left-20 top-10 w-96 h-96 rounded-full blur-3xl" style={{ background: "radial-gradient(circle, #00d9ff 0%, transparent 70%)" }} />
         <div className="absolute right-0 bottom-10 w-96 h-96 rounded-full blur-3xl" style={{ background: "radial-gradient(circle, #8b5cf6 0%, transparent 70%)" }} />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-12 space-y-10 relative z-10 w-full overflow-hidden">
+      <div className="max-w-6xl w-full mx-auto px-4 py-12 space-y-10 relative z-10 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -384,7 +384,7 @@ export default function ApplyPage() {
               />
             </div>
 
-              <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center justify-between flex-wrap gap-3 w-full">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <FileText className="h-4 w-4" />
                   <span>{keywords.length ? `${keywords.length} keywords detected` : "Add requirements to extract keywords"}</span>
